@@ -15,24 +15,40 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc, x86_64-apple-darwin, aarch64-apple-darwin, aarch64-unknown-linux-gnu]
-        exclude:
-          # Exclude Apple Silicon and ARM from Windows and Linux
+        window_manager: ["xfce", "gnome", "kde"]
+        include:
           - os: ubuntu-latest
-            target: aarch64-apple-darwin
-          - os: windows-latest
-            target: aarch64-apple-darwin
-          - os: ubuntu-latest
-            target: x86_64-apple-darwin
-          - os: windows-latest
-            target: x86_64-apple-darwin
-          # Exclude x86_64 and ARM from MacOS
-          - os: macos-latest
             target: x86_64-unknown-linux-gnu
-          - os: macos-latest
+            image: "ubuntu:latest"
+            packages: "libssl-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev"
+          - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-          - os: macos-latest
+            image: "ubuntu:latest"
+            packages: "gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libssl-dev:arm64 libxcb-render0-dev:arm64 libxcb-shape0-dev:arm64 libxcb-xfixes0-dev:arm64"
+          - os: windows-latest
             target: x86_64-pc-windows-msvc
+            packages: ""
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            packages: ""
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            packages: ""
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            packages: ""
+    container:
+      image: ${{ matrix.image }}
+      env:
+        WINDOW_MANAGER: ${{ matrix.window_manager }}
     steps:
+      - name: Install dependencies
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
+          sudo apt-get install -y ${{ matrix.packages }}
+
       - name: Checkout
         uses: actions/checkout@v2
 
@@ -55,6 +71,17 @@ jobs:
         with:
           path: target
           key: ${{ runner.os }}-target-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Configure Environment
+        run: |
+          echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
+          echo "PKG_CONFIG_ALL_STATIC=1" >> $GITHUB_ENV
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux          -gnu" ]; then
+            echo "PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig" >> $GITHUB_ENV
+            echo "PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu" >> $GITHUB_ENV
+            echo "OPENSSL_DIR=/usr/lib/aarch64-linux-gnu" >> $GITHUB_ENV
+            echo "LIBZ_SYS_STATIC=1" >> $GITHUB_ENV
+          fi
 
       - name: Build
         run: cargo build --target ${{ matrix.target }} --verbose
