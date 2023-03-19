@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build_and_test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc, x86_64-apple-darwin, aarch64-apple-darwin, aarch64-unknown-linux-gnu]
+        exclude:
+          # Exclude Apple Silicon and ARM from Windows and Linux
+          - os: ubuntu-latest
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            target: aarch64-apple-darwin
+          - os: ubuntu-latest
+            target: x86_64-apple-darwin
+          - os: windows-latest
+            target: x86_64-apple-darwin
+          # Exclude x86_64 and ARM from MacOS
+          - os: macos-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            target: aarch64-unknown-linux-gnu
+          - os: macos-latest
+            target: x86_64-pc-windows-msvc
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+
+      - name: Cache Cargo
+        uses: actions/cache@v2
+        with:
+          path: ~/.cargo
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache Rust target
+        uses: actions/cache@v2
+        with:
+          path: target
+          key: ${{ runner.os }}-target-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build
+        run: cargo build --target ${{ matrix.target }} --verbose
+
+      - name: Test
+        run: cargo test --target ${{ matrix.target }} --verbose
