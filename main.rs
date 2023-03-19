@@ -1,7 +1,7 @@
 mod screen_resolution;
 
 use clap::{App, Arg};
-use image::{GenericImageView, ImageBuffer, Rgba};
+use image::{GenericImageView};
 use reqwest::blocking::get;
 use std::fs::File;
 use winit::dpi::PhysicalSize;

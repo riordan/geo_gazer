@@ -1,7 +1,7 @@
 use winit::{
-    dpi::{PhysicalSize, Size},
+    dpi::{PhysicalSize},
     event_loop::EventLoop,
-    window::{Window, WindowBuilder},
+    window::{WindowBuilder},
 };
 
 pub fn get_screen_resolution() -> Result<PhysicalSize<u32>, &'static str> {
